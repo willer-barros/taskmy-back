@@ -2,12 +2,14 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import TokenAuthentication
 from .models import Board, List, Card
 from .serializers import BoardSerializer, BoardListSerializer, ListSerializer, CardSerializer
 
 
 class BoardViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
+    authentication_classes = [TokenAuthentication]
     
     def get_serializer_class(self):
         # Usa serializer leve para listagem
