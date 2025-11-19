@@ -20,6 +20,7 @@ class ListSerializer(serializers.ModelSerializer):
     class Meta:
         model = List
         fields = ["id", "title", "position", "board", "cards", "created_at"]
+        read_only_fields = ["board", "position", "created_at"] 
 
 
 class BoardSerializer(serializers.ModelSerializer):
