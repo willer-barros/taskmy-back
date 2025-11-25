@@ -15,6 +15,9 @@ urlpatterns = [
     path('boards/<int:board_pk>/lists/<int:list_pk>/cards/', CardViewSet.as_view({'get': 'list', 'post': 'create'}), name='list-card-list'),
     path('boards/<int:board_pk>/lists/<int:list_pk>/cards/<int:pk>/', CardViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'}), name='list-card-detail'),
     
+    # URLs para mover o card
+    path('boards/<int:board_pk>/lists/<int:list_pk>/cards/<int:pk>/move/', CardViewSet.as_view({'patch': 'move'}), name='list-card-move'),
+    
     #URL de auth
     path("auth-token/", obtain_auth_token, name="auth-token")
 ]
