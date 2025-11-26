@@ -4,7 +4,22 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
 from .models import Board, List, Card
-from .serializers import BoardSerializer, BoardListSerializer, ListSerializer, CardSerializer
+from .serializers import BoardSerializer, BoardListSerializer, ListSerializer, CardSerializer, UserSerializer
+from api.models import User
+
+
+
+class UserViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [TokenAuthentication]
+    
+    def get_queryset(self):
+        return User.objects.filter(is_active=True, is_superuser=False)
+    
+    def get_serializer_class(self):
+        return UserSerializer
+    
+
 
 
 class BoardViewSet(viewsets.ModelViewSet):
