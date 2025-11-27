@@ -4,8 +4,49 @@ from django.contrib.auth.models import AbstractUser
 from django.conf import settings
 
 
+class Company(models.Model):
+    """Empresa"""
+    name = models.CharField(max_length=255)
+    slug = models.SlugField(unique=True)
+    created_at = models.DateTimeField(default=True)
+    is_active = models.BooleanField(default=True)
+    
+    # max_users = models.IntegerField(default=10)
+    # max_boards = models.IntegerField(default=5)
+    
+    class Meta:
+        verbose_name_plural = "Companies"
+        
+    def __str__(self):
+        return self.name
+
+
 class User(AbstractUser):
-    pass
+    company = models.ForeignKey(
+        Company, 
+        on_delete=models.CASCADE,
+        related_name="users",
+        null=True,
+        blank=True
+    )
+    
+    ROLE_CHOICES = [
+        ('admin', 'Administrador'),
+        ('manager', 'Gerente'),
+        ('member', 'Membro'),
+    ]
+    
+    role = models.CharField(
+        max_length=20,
+        choices=ROLE_CHOICES,
+        default="member"
+    )
+    
+    def is_company_admin(self):
+        return self.role == "admin"
+    
+    def __str__(self):
+        return f"{self.username} ({self.company.name if self.company else 'Sem empresa'})"
 
 
 class Board(models.Model):
@@ -18,6 +59,7 @@ class Board(models.Model):
     
     
     title = models.CharField(max_length=255)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="boards",null=True)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="boards")
     description = models.TextField(blank=True, null=True)
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium')
@@ -27,7 +69,7 @@ class Board(models.Model):
     update_at = models.DateTimeField(auto_now=True)
     
     def __str__(self):
-        return self.title
+        return f"{self.title} - {self.company.name}"
     
     class Meta:
         ordering = ['-created_at']

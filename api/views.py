@@ -3,21 +3,65 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
-from .models import Board, List, Card
-from .serializers import BoardSerializer, BoardListSerializer, ListSerializer, CardSerializer, UserSerializer
+from .models import Board, List, Card, Company
+from .serializers import BoardSerializer, BoardListSerializer, ListSerializer, CardSerializer, UserSerializer, CompanySerializer
 from api.models import User
+
+
+class CompanyViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes= [IsAuthenticated]
+    authentication_classes = [TokenAuthentication]
+    serializer_class = CompanySerializer
+    
+    def get_queryset(self):
+        return Company.objects.filter(id=self.request.user.company_id)
 
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
+    serializer_class = UserSerializer
     
     def get_queryset(self):
-        return User.objects.filter(is_active=True, is_superuser=False)
+        if not self.request.user.company:
+            return User.objects.none()
+        return User.objects.filter(company=self.request.user.company, is_active=True)
     
-    def get_serializer_class(self):
-        return UserSerializer
+    def perform_create(self, serializer):
+        if not self.request.user.is_company_admin():
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Apenas Login admin pode criar usuários")
+        
+        company = self.request.user.company
+        current_users = company.users.count()
+        
+        # if current_users >= company.max_users:
+        #     from rest_framework.exceptions import ValidationError
+        #     raise ValidationError(f"Limite de {company.max_users} usuários atingido")
+        
+        serializer.save(company=self.request.user.company)
+        
+    @action(detail=True, methods=['patch'])
+    def change_role(self, request, pk=None):
+        if not request.user.is_company_admin():
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Apenas Login admin pode criar usuários")
+        
+        user = self.get_object()
+        new_role = request.data.get("role")
+        
+        if new_role not in ['admin', 'manager', 'member']:
+            return Response({'error': 'Role inválido'}, status=400)
+    
+    
+        user.role = new_role
+        user.save()
+        
+        return Response({'status': 'Role atualizado', 'role': new_role})
+        
+    # def get_serializer_class(self):
+    #     return UserSerializer
     
 
 
@@ -33,13 +77,24 @@ class BoardViewSet(viewsets.ModelViewSet):
         return BoardSerializer
     
     def get_queryset(self):
-        return self.request.user.boards.all()
+        if not self.request.user.company:
+            return Board.objects.none()
+        return Board.objects.filter(company=self.request.user.company)
+        
     
     def perform_create(self, serializer):
-        # Cria o board com as 3 listas padrão
-        board = serializer.save(owner=self.request.user)
+        company = self.request.user.company
+        current_boards = company.boards.count()
         
-        # Cria listas padrão automaticamente
+        if current_boards >= company.max_boards:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError(f"Limite de {company.max_boards} projetos atingido")
+        
+        board = serializer.save(
+            owner=self.request.user,
+            company=self.request.user.company
+        )
+        
         List.objects.create(title="A Fazer", board=board, position=0)
         List.objects.create(title="Em Andamento", board=board, position=1)
         List.objects.create(title="Concluído", board=board, position=2)

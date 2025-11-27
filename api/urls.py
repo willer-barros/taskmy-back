@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import BoardViewSet, ListViewSet, CardViewSet, UserViewSet
+from .views import BoardViewSet, ListViewSet, CardViewSet, UserViewSet, CompanyViewSet
 from rest_framework.authtoken.views import obtain_auth_token
 
 urlpatterns = [
@@ -21,6 +21,11 @@ urlpatterns = [
     #URL de auth
     path("auth-token/", obtain_auth_token, name="auth-token"),
     
+    #URL da company
+    path('company/', CompanyViewSet.as_view({'get': 'list'}), name='company-list'),
+    
     #URL de Users
     path('users/', UserViewSet.as_view({'get': 'list'}), name='user-list'),
+    path('users/<int:pk>/', UserViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update', 'delete': 'destroy'}), name='user-detail'),
+    path('users/<int:pk>/change_role/', UserViewSet.as_view({'patch': 'change_role'}), name='user-change-role'),
 ]

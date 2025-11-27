@@ -1,13 +1,49 @@
 from rest_framework import serializers
-from .models import Board, Card, List
+from .models import Board, Card, List, Company
 from api.models import User
 
 
+class CompanySerializer(serializers.ModelSerializer):
+    users_count = serializers.SerializerMethodField()
+    boards_count = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Company
+        fields = [
+            'id', 'name', 'slug', 
+            'max_users', 'max_boards',
+            'users_count', 'boards_count',
+            'created_at'
+        ]
+        
+    def get_users_count(self, obj):
+        return obj.user.filter(is_active=True).count()
+    
+    def get_boards_count(self, obj):
+        return obj.boards.count()
+
+
 class UserSerializer(serializers.ModelSerializer):
+    company_name = serializers.CharField(source="company.name", read_only=True)
+    
     class Meta:
         model = User
-        fields = ["id", "username", "email", "first_name", "last_name"]
-        read_only_fields = ["id", "username", "email", "first_name", "last_name"] 
+        fields = ["id", "username", "email", "first_name", "last_name",'company', 'company_name', 'role']
+        read_only_fields = ['id', 'company', 'company_name'] 
+        
+        extra_kwargs = {
+            'password': {'write_only': True}
+        }
+        
+        
+        def create(self, validated_data):
+            password = validated_data.pop("password", None)
+            user = User.objects.create(**validated_data)
+            if password:
+                user.set_password(password)
+                user.save()
+                
+            return user
 
 class CardSerializer(serializers.ModelSerializer):
     members = serializers.SlugRelatedField(
@@ -34,6 +70,7 @@ class BoardSerializer(serializers.ModelSerializer):
     lists = ListSerializer(many=True, read_only=True)
     owner = serializers.PrimaryKeyRelatedField(read_only=True)
     priority_display = serializers.CharField(source='get_priority_display', read_only=True)
+    company_name = serializers.CharField(source='company.name', read_only=True)
     
     class Meta:
         model = Board
@@ -41,16 +78,18 @@ class BoardSerializer(serializers.ModelSerializer):
             "id", 
             "title", 
             "description", 
+            "company",
+            "company_name",
             "owner", 
             "priority",
-            "priority_display",  # Retorna o label legível (ex: "Alta")
+            "priority_display",
             "start_date",
             "end_date",
             "lists", 
             "created_at", 
             "update_at"
         ]
-        read_only_fields = ["created_at", "update_at"]
+        read_only_fields = ["created_at", "update_at", "company"]
 
 
 # Serializer simplificado para listar projetos (sem as listas aninhadas)
